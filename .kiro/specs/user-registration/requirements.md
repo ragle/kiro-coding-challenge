@@ -4,6 +4,8 @@
 
 This document defines the requirements for implementing a user registration system for events in the Events Management API. The system will enable users to register for events, manage event capacity constraints, handle waitlists, and track user event registrations. This feature extends the existing serverless architecture built with FastAPI, AWS Lambda, API Gateway, and DynamoDB.
 
+**Scope**: This document contains 7 core functional requirements (Requirements 1-7) that define the user registration feature, plus 2 additional requirements (Requirements 8-9) that address cross-cutting concerns for API consistency and operational excellence.
+
 ## Glossary
 
 - **User**: An individual who can register for events in the system
@@ -29,18 +31,11 @@ This document defines the requirements for implementing a user registration syst
 3. WHEN a user creation request is submitted without a userId THEN the Registration System SHALL generate a unique UUID as the userId
 4. WHEN a user is created THEN the Registration System SHALL store the userId, name, and creation timestamp in the User Table
 5. WHEN a user creation succeeds THEN the Registration System SHALL return the created user with userId and name
+6. WHEN a user creation request includes a name THEN the Registration System SHALL validate that the name contains between 1 and 200 characters
+7. WHEN a user creation request includes an invalid name THEN the Registration System SHALL reject the request and return a validation error
+8. WHEN a user creation request attempts to use a userId that already exists THEN the Registration System SHALL reject the request and return an error indicating the userId is already in use
 
 ### Requirement 2
-
-**User Story:** As a system user, I want user names to be validated, so that user data is consistent and meaningful.
-
-#### Acceptance Criteria
-
-1. WHEN a user creation request includes a name THEN the Registration System SHALL validate that the name contains between 1 and 200 characters
-2. WHEN a user creation request includes an invalid name THEN the Registration System SHALL reject the request and return a validation error
-3. WHEN a user creation request attempts to use a userId that already exists THEN the Registration System SHALL reject the request and return an error indicating the userId is already in use
-
-### Requirement 3
 
 **User Story:** As a user, I want to register for an event, so that I can attend the event.
 
@@ -52,7 +47,7 @@ This document defines the requirements for implementing a user registration syst
 4. WHEN a user attempts to register for an event that does not exist THEN the Registration System SHALL reject the registration and return an error
 5. WHEN a user attempts to register for an event they are already registered for THEN the Registration System SHALL reject the registration and return an error indicating duplicate registration
 
-### Requirement 4
+### Requirement 3
 
 **User Story:** As an event organizer, I want events to enforce capacity constraints, so that events do not become overcrowded.
 
@@ -63,7 +58,7 @@ This document defines the requirements for implementing a user registration syst
 3. WHEN the number of confirmed registrations equals the event capacity THEN the Registration System SHALL consider the event full
 4. WHEN an event has no capacity constraint defined THEN the Registration System SHALL allow unlimited registrations
 
-### Requirement 5
+### Requirement 4
 
 **User Story:** As a user, I want to be added to a waitlist when an event is full, so that I can attend if spots become available.
 
@@ -75,7 +70,7 @@ This document defines the requirements for implementing a user registration syst
 4. WHEN a user is successfully added to a waitlist THEN the Registration System SHALL return the waitlist entry with userId, eventId, and position
 5. WHEN a user attempts to join a waitlist they are already on THEN the Registration System SHALL reject the request and return an error
 
-### Requirement 6
+### Requirement 5
 
 **User Story:** As a user, I want to unregister from an event, so that I can free up my spot for other attendees.
 
@@ -87,7 +82,7 @@ This document defines the requirements for implementing a user registration syst
 4. WHEN a user attempts to unregister from an event they are not registered for THEN the Registration System SHALL return an error
 5. WHEN a user unregisters successfully THEN the Registration System SHALL return a confirmation message
 
-### Requirement 7
+### Requirement 6
 
 **User Story:** As a user, I want to view all events I am registered for, so that I can track my event attendance.
 
@@ -98,7 +93,7 @@ This document defines the requirements for implementing a user registration syst
 3. WHEN a user has no registered events THEN the Registration System SHALL return an empty list
 4. WHEN the Registration System returns registered events THEN the system SHALL include the registration timestamp for each event
 
-### Requirement 8
+### Requirement 7
 
 **User Story:** As a user, I want to view my waitlist status, so that I know which events I am waiting to attend.
 
@@ -109,7 +104,11 @@ This document defines the requirements for implementing a user registration syst
 3. WHEN the Registration System retrieves waitlist entries THEN the system SHALL include full event details for each waitlisted event
 4. WHEN a user has no waitlist entries THEN the Registration System SHALL return an empty list
 
-### Requirement 9
+## Additional Requirements
+
+These requirements address cross-cutting concerns for API consistency and operational excellence.
+
+### Requirement 8
 
 **User Story:** As a developer, I want the registration API to follow REST conventions, so that it integrates consistently with the existing events API.
 
@@ -121,7 +120,7 @@ This document defines the requirements for implementing a user registration syst
 4. WHEN a conflict occurs THEN the Registration System SHALL return HTTP status code 409 Conflict with details
 5. WHEN the API returns errors THEN the system SHALL use the standard error response format with a detail field
 
-### Requirement 10
+### Requirement 9
 
 **User Story:** As a system operator, I want comprehensive error handling and logging, so that I can monitor and troubleshoot the registration system effectively.
 
