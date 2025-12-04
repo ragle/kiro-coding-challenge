@@ -13,6 +13,15 @@
       },
       "disabled": false,
       "autoApprove": []
-  }
+  },
+  "awslabs.frontend-mcp-server": {
+      "command": "uvx",
+      "args": ["awslabs.frontend-mcp-server@latest"],
+      "env": {
+        "FASTMCP_LOG_LEVEL": "ERROR"
+      },
+      "disabled": false,
+      "autoApprove": []
+    }
 }
 }
