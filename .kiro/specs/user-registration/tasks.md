@@ -1,0 +1,170 @@
+# Implementation Plan
+
+- [ ] 1. Set up data models and DynamoDB tables
+  - [ ] 1.1 Create User, Registration, and WaitlistEntry Pydantic models with validation
+    - Define User model with userId, name, createdAt fields
+    - Define Registration model with userId, eventId, status, registeredAt fields
+    - Define WaitlistEntry model with userId, eventId, position, addedAt fields
+    - Add validation for name length (1-200 characters)
+    - _Requirements: 1.1, 1.4, 1.5, 1.6, 1.7, 2.2_
+  - [ ] 1.2 Extend Event model with capacity and waitlist fields
+    - Add optional capacity field to Event model
+    - Add waitlistEnabled boolean field to Event model
+    - _Requirements: 3.1, 3.4, 4.1_
+  - [ ] 1.3 Update CDK infrastructure to create Users, Registrations, and Waitlist DynamoDB tables
+    - Create Users table with userId as partition key
+    - Create Registrations table with eventId as partition key and userId as sort key
+    - Create Waitlist table with eventId as partition key and position as sort key
+    - Add GSI UserRegistrationsIndex on Registrations table (userId partition key, registeredAt sort key)
+    - Add GSI UserWaitlistIndex on Waitlist table (userId partition key, addedAt sort key)
+    - _Requirements: 1.4, 2.2, 5.2_
+  - [ ]* 1.4 Write property test for User model validation
+    - **Property 6: Name length validation**
+    - **Validates: Requirements 1.6, 1.7**
+
+- [ ] 2. Implement user management endpoints
+  - [ ] 2.1 Implement POST /users endpoint for user creation
+    - Accept userId (optional) and name in request body
+    - Generate UUID if userId not provided
+    - Validate name length (1-200 characters)
+    - Use conditional write to prevent duplicate userId
+    - Store user in Users table with createdAt timestamp
+    - Return 201 Created with user object
+    - Return 400 Bad Request for validation errors
+    - Return 409 Conflict for duplicate userId
+    - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.5, 1.6, 1.7, 1.8_
+  - [ ]* 2.2 Write property test for user creation with valid names
+    - **Property 1: User creation with valid name produces unique identifier**
+    - **Validates: Requirements 1.1**
+  - [ ]* 2.3 Write property test for custom userId preservation
+    - **Property 2: Custom userId is preserved when provided**
+    - **Validates: Requirements 1.2**
+  - [ ]* 2.4 Write property test for auto-generated UUID format
+    - **Property 3: Auto-generated userIds are valid UUIDs**
+    - **Validates: Requirements 1.3**
+  - [ ]* 2.5 Write property test for user data persistence
+    - **Property 4: User data persistence round-trip**
+    - **Validates: Requirements 1.4**
+  - [ ] 2.6 Implement GET /users/{userId} endpoint
+    - Retrieve user from Users table by userId
+    - Return 200 OK with user object
+    - Return 404 Not Found if user doesn't exist
+    - _Requirements: 1.4_
+
+- [ ] 3. Implement capacity management logic
+  - [ ] 3.1 Create CapacityManager class
+    - Implement check_capacity method to count confirmed registrations
+    - Implement is_event_full method to compare count with capacity
+    - Implement get_available_spots method
+    - Handle events without capacity constraint (unlimited)
+    - _Requirements: 3.1, 3.2, 3.3, 3.4_
+  - [ ]* 3.2 Write property test for registration counting
+    - **Property 11: Registration count equals confirmed registrations**
+    - **Validates: Requirements 3.2, 3.3**
+  - [ ]* 3.3 Write property test for unlimited registration
+    - **Property 12: Unlimited registration without capacity constraint**
+    - **Validates: Requirements 3.4**
+
+- [ ] 4. Implement event registration endpoints
+  - [ ] 4.1 Implement POST /events/{eventId}/registrations endpoint
+    - Validate that event exists
+    - Validate that user exists
+    - Check if user is already registered (return 409 Conflict)
+    - Check event capacity using CapacityManager
+    - If capacity available: create registration with status "confirmed"
+    - If event full without waitlist: return 409 Conflict with "event is full" message
+    - If event full with waitlist: add user to waitlist (call WaitlistManager)
+    - Store registration in Registrations table with registeredAt timestamp
+    - Return 201 Created with registration object
+    - Return 400 Bad Request for validation errors
+    - Return 404 Not Found if event or user doesn't exist
+    - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 3.1, 4.1_
+  - [ ]* 4.2 Write property test for registration with available capacity
+    - **Property 7: Registration creation with available capacity**
+    - **Validates: Requirements 2.1**
+  - [ ]* 4.3 Write property test for registration data persistence
+    - **Property 8: Registration data persistence**
+    - **Validates: Requirements 2.2**
+  - [ ]* 4.4 Write property test for capacity enforcement
+    - **Property 10: Capacity enforcement**
+    - **Validates: Requirements 3.1**
+  - [ ] 4.5 Implement GET /events/{eventId}/registrations endpoint
+    - Query Registrations table by eventId
+    - Return 200 OK with array of registration objects
+    - Return 404 Not Found if event doesn't exist
+    - _Requirements: 2.2_
+
+- [ ] 5. Implement waitlist management
+  - [ ] 5.1 Create WaitlistManager class
+    - Implement add_to_waitlist method to add user with sequential position
+    - Implement get_next_position method to calculate next position number
+    - Implement promote_from_waitlist method to get user at position 1
+    - Implement remove_from_waitlist method
+    - _Requirements: 4.1, 4.2, 4.3, 4.4, 4.5, 5.1, 5.2, 5.3_
+  - [ ]* 5.2 Write property test for waitlist addition
+    - **Property 13: Waitlist addition for full events**
+    - **Validates: Requirements 4.1**
+  - [ ]* 5.3 Write property test for sequential waitlist positions
+    - **Property 15: Sequential waitlist positions**
+    - **Validates: Requirements 4.3**
+  - [ ] 5.4 Implement GET /events/{eventId}/waitlist endpoint
+    - Query Waitlist table by eventId ordered by position
+    - Return 200 OK with array of waitlist entries
+    - Return 404 Not Found if event doesn't exist
+    - _Requirements: 4.2_
+
+- [ ] 6. Implement unregistration with waitlist promotion
+  - [ ] 6.1 Implement DELETE /events/{eventId}/registrations/{userId} endpoint
+    - Validate that registration exists (return 404 if not)
+    - Delete registration from Registrations table
+    - Check if event has waitlist entries
+    - If waitlist exists: use DynamoDB transaction to promote first waitlist user
+    - Transaction: delete waitlist entry + create registration for promoted user
+    - Return 200 OK with confirmation message
+    - _Requirements: 5.1, 5.2, 5.3, 5.5_
+  - [ ]* 6.2 Write property test for unregistration
+    - **Property 17: Unregistration removes record**
+    - **Validates: Requirements 5.1**
+  - [ ]* 6.3 Write property test for waitlist promotion
+    - **Property 18: Waitlist promotion on unregistration**
+    - **Validates: Requirements 5.2, 5.3**
+
+- [ ] 7. Implement user event listing endpoints
+  - [ ] 7.1 Implement GET /users/{userId}/registrations endpoint
+    - Query Registrations table using UserRegistrationsIndex GSI
+    - For each registration, fetch full event details from Events table
+    - Return 200 OK with array of events including registeredAt timestamps
+    - Return empty array if user has no registrations
+    - Return 404 Not Found if user doesn't exist
+    - _Requirements: 6.1, 6.2, 6.3, 6.4_
+  - [ ]* 7.2 Write property test for user registrations list
+    - **Property 20: User registrations list completeness**
+    - **Validates: Requirements 6.1, 6.2**
+  - [ ] 7.3 Implement GET /users/{userId}/waitlist endpoint
+    - Query Waitlist table using UserWaitlistIndex GSI
+    - For each waitlist entry, fetch full event details from Events table
+    - Return 200 OK with array of waitlist entries including position and event details
+    - Return empty array if user has no waitlist entries
+    - Return 404 Not Found if user doesn't exist
+    - _Requirements: 7.1, 7.2, 7.3, 7.4_
+  - [ ]* 7.4 Write property test for user waitlist entries
+    - **Property 22: User waitlist entries completeness**
+    - **Validates: Requirements 7.1, 7.2, 7.3**
+
+- [ ] 8. Add error handling and logging
+  - [ ] 8.1 Add comprehensive error handling to all endpoints
+    - Handle DynamoDB ClientError exceptions
+    - Return appropriate HTTP status codes (400, 404, 409, 500)
+    - Use standard error response format with detail field
+    - Log all errors with context
+    - _Requirements: All_
+  - [ ] 8.2 Add logging for all operations
+    - Log user creation with userId and timestamp
+    - Log registrations with userId, eventId, and timestamp
+    - Log waitlist additions with userId, eventId, position, and timestamp
+    - Log unregistrations and promotions
+    - Ensure no sensitive data in logs
+    - _Requirements: All_
+
+- [ ] 9. Final checkpoint - Ensure all tests pass
+  - Ensure all tests pass, ask the user if questions arise.

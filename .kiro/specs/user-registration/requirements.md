@@ -4,7 +4,7 @@
 
 This document defines the requirements for implementing a user registration system for events in the Events Management API. The system will enable users to register for events, manage event capacity constraints, handle waitlists, and track user event registrations. This feature extends the existing serverless architecture built with FastAPI, AWS Lambda, API Gateway, and DynamoDB.
 
-**Scope**: This document contains 7 core functional requirements (Requirements 1-7) that define the user registration feature, plus 2 additional requirements (Requirements 8-9) that address cross-cutting concerns for API consistency and operational excellence.
+
 
 ## Glossary
 
@@ -103,31 +103,3 @@ This document defines the requirements for implementing a user registration syst
 2. WHEN the Registration System retrieves waitlist entries THEN the system SHALL include the waitlist position for each entry
 3. WHEN the Registration System retrieves waitlist entries THEN the system SHALL include full event details for each waitlisted event
 4. WHEN a user has no waitlist entries THEN the Registration System SHALL return an empty list
-
-## Additional Requirements
-
-These requirements address cross-cutting concerns for API consistency and operational excellence.
-
-### Requirement 8
-
-**User Story:** As a developer, I want the registration API to follow REST conventions, so that it integrates consistently with the existing events API.
-
-#### Acceptance Criteria
-
-1. WHEN a user or registration is created successfully THEN the Registration System SHALL return HTTP status code 201 Created
-2. WHEN a validation error occurs THEN the Registration System SHALL return HTTP status code 400 Bad Request with error details
-3. WHEN a resource is not found THEN the Registration System SHALL return HTTP status code 404 Not Found
-4. WHEN a conflict occurs THEN the Registration System SHALL return HTTP status code 409 Conflict with details
-5. WHEN the API returns errors THEN the system SHALL use the standard error response format with a detail field
-
-### Requirement 9
-
-**User Story:** As a system operator, I want comprehensive error handling and logging, so that I can monitor and troubleshoot the registration system effectively.
-
-#### Acceptance Criteria
-
-1. WHEN a user is created THEN the Registration System SHALL log the event with userId and timestamp
-2. WHEN a user registers for an event THEN the Registration System SHALL log the registration with userId, eventId, and timestamp
-3. WHEN a user is added to a waitlist THEN the Registration System SHALL log the waitlist entry with userId, eventId, position, and timestamp
-4. WHEN a database error occurs THEN the system SHALL log the error details and return a generic error message to the client
-5. WHEN an unexpected error occurs THEN the system SHALL log the full error details and return HTTP status code 500 Internal Server Error
